@@ -1,0 +1,14 @@
+requests
+beautifulsoup4
+pandas
+python-dateutil
+pyyaml
+streamlit
+APScheduler
+SQLAlchemy>=2
+pydantic>=2
+python-dotenv
+fastapi[all]
+uvicorn
+httpx
+email-validator

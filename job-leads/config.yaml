@@ -1,0 +1,16 @@
+sites: ["greenhouse", "lever", "remoteok", "weworkremotely"]
+include: ["ux", "product designer"]
+exclude: ["senior", "principal", "staff", "lead"]
+locations: ["australia", "remote"]
+score_rules:
+  plus:
+    - ["wcag", 3]
+    - ["figma", 2]
+    - ["aest", 2]
+  minus:
+    - ["senior", 4]
+    - ["principal", 5]
+output_csv: "out/jobs.csv"
+output_sqlite: "out/jobs.sqlite"
+table: "jobs"
+schedule_cron: "0 */6 * * *"
