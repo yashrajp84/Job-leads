@@ -143,9 +143,12 @@ with st.form("manual_lead"):
             st.warning("Could not add via API. Consider adding via DB.")
 
 st.subheader("Export CSV")
+export_cols = [c for c in df.columns if c in [
+    "id","title","company","location","salary","tags","posted_at","url","source","collected_at","description"
+]]
 st.download_button(
     label="Download current jobs.csv",
-    data=pd.read_csv("out/jobs.csv").to_csv(index=False).encode("utf-8"),
+    data=df[export_cols].to_csv(index=False).encode("utf-8"),
     file_name="jobs.csv",
     mime="text/csv",
 )

@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Tuple
 
 import pandas as pd
+from dotenv import load_dotenv
 import yaml
 
 from .adapters import ADAPTERS
@@ -14,6 +15,11 @@ from .models import Job
 from .schema import JobModel
 from .scoring import score_record
 from .utils import now_iso, url_hash
+from .repo import (
+    upsert_jobs_supa,
+    ensure_leads_supa,
+    get_existing_ids_supa,
+)
 
 
 def load_config(path: str) -> dict:
@@ -22,7 +28,9 @@ def load_config(path: str) -> dict:
 
 
 def run_scrape(cfg: dict) -> tuple[int, int, int, list[JobModel]]:
-    init_db()
+    # Initialize local DB only if using sqlite
+    if cfg.get("use_sqlite"):
+        init_db()
     sites: List[str] = cfg.get("sites", [])
     includes: List[str] = cfg.get("include", [])
     excludes: List[str] = cfg.get("exclude", [])
@@ -57,45 +65,67 @@ def run_scrape(cfg: dict) -> tuple[int, int, int, list[JobModel]]:
     unique = list(unique_map.values())
     unique_count = len(unique)
 
-    # Save to DB and CSV
-    new_jobs: List[JobModel] = []
-    with get_session() as session:
-        for r in unique:
-            if not r.get("id"):
-                r["id"] = url_hash(r.get("url", ""))
-            r.setdefault("collected_at", now_iso())
-            existed = session.get(Job, r["id"]) is not None
-            job = upsert_job(session, r)
-            if not existed:
-                new_jobs.append(JobModel(**{c: getattr(job, c) for c in JobModel.model_fields.keys()}))
+    # Decide storage target based on env/config
+    supa_ok = bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
 
-    # CSV export (all filtered unique)
-    out_csv = cfg.get("output_csv", "out/jobs.csv")
-    os.makedirs(os.path.dirname(out_csv), exist_ok=True)
-    df = pd.DataFrame(unique)
-    cols = [
-        "id",
-        "title",
-        "company",
-        "location",
-        "salary",
-        "tags",
-        "posted_at",
-        "url",
-        "source",
-        "collected_at",
-        "description",
-        "score",
-    ]
-    for c in cols:
-        if c not in df.columns:
-            df[c] = ""
-    df[cols].to_csv(out_csv, index=False)
+    # Always assign ids and collected_at
+    ids = [r.get("id") or url_hash(r.get("url", "")) for r in unique]
+    for r, _id in zip(unique, ids):
+        r["id"] = _id
+        r.setdefault("collected_at", now_iso())
+
+    new_jobs: List[JobModel] = []
+
+    if supa_ok:
+        existing = get_existing_ids_supa(ids, service=True)
+        upserted_ids = upsert_jobs_supa(unique, service=True)
+        ensure_leads_supa(upserted_ids, service=True)
+        new_ids = [i for i in upserted_ids if i not in existing]
+        new_jobs = [
+            JobModel(**{k: v for k, v in r.items() if k in JobModel.model_fields})
+            for r in unique
+            if r["id"] in new_ids
+        ]
+    # Local writes: if configured or Supabase not available
+    if cfg.get("use_sqlite") or not supa_ok:
+        with get_session() as session:
+            for r in unique:
+                existed = session.get(Job, r["id"]) is not None
+                job = upsert_job(session, r)
+                if not supa_ok and not existed:
+                    new_jobs.append(
+                        JobModel(
+                            **{c: getattr(job, c) for c in JobModel.model_fields.keys()}
+                        )
+                    )
+
+        out_csv = cfg.get("output_csv", "out/jobs.csv")
+        os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+        df = pd.DataFrame(unique)
+        cols = [
+            "id",
+            "title",
+            "company",
+            "location",
+            "salary",
+            "tags",
+            "posted_at",
+            "url",
+            "source",
+            "collected_at",
+            "description",
+            "score",
+        ]
+        for c in cols:
+            if c not in df.columns:
+                df[c] = ""
+        df[cols].to_csv(out_csv, index=False)
 
     return all_count, filtered_count, unique_count, new_jobs
 
 
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Job leads scraper orchestrator")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--include", nargs="*", default=None)
@@ -120,4 +150,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

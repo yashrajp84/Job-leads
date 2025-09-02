@@ -12,3 +12,5 @@ fastapi[all]
 uvicorn
 httpx
 email-validator
+supabase
+psycopg[binary]

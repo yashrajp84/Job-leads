@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,23 +33,22 @@ class LeadModel(BaseModel):
 
 
 class FilterQuery(BaseModel):
-    q: str | None = None
-    status: str | None = None
-    source: str | None = None
-    location: str | None = None
-    date_from: str | None = None
-    date_to: str | None = None
+    q: Optional[str] = None
+    status: Optional[str] = None
+    source: Optional[str] = None
+    location: Optional[str] = None
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
     limit: int = 100
     offset: int = 0
 
 
 class UpsertLead(BaseModel):
-    status: str | None = None
-    score: int | None = None
-    favourite: bool | None = None
-    resume_url: str | None = None
-    cover_letter_url: str | None = None
-    next_action: str | None = None
-    next_action_date: str | None = None
-    notes: str | None = None
-
+    status: Optional[str] = None
+    score: Optional[int] = None
+    favourite: Optional[bool] = None
+    resume_url: Optional[str] = None
+    cover_letter_url: Optional[str] = None
+    next_action: Optional[str] = None
+    next_action_date: Optional[str] = None
+    notes: Optional[str] = None

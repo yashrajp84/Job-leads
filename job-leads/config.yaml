@@ -14,3 +14,4 @@ output_csv: "out/jobs.csv"
 output_sqlite: "out/jobs.sqlite"
 table: "jobs"
 schedule_cron: "0 */6 * * *"
+use_sqlite: false

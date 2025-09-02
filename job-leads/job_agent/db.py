@@ -38,8 +38,21 @@ def get_session() -> Iterable[Session]:
 
 def upsert_job(session: Session, data: dict) -> Job:
     job = session.get(Job, data["id"])  # type: ignore
+    allowed = {
+        "id",
+        "title",
+        "company",
+        "location",
+        "salary",
+        "tags",
+        "posted_at",
+        "url",
+        "source",
+        "collected_at",
+        "description",
+    }
     if job is None:
-        job = Job(**data)
+        job = Job(**{k: v for k, v in data.items() if k in allowed})
         session.add(job)
     else:
         # Update fields that belong to the job record only
@@ -55,7 +68,8 @@ def upsert_job(session: Session, data: dict) -> Job:
             "collected_at",
             "description",
         ]:
-            setattr(job, k, data.get(k, getattr(job, k)))
+            if k in data:
+                setattr(job, k, data.get(k, getattr(job, k)))
     return job
 
 
@@ -75,4 +89,3 @@ def get_new_job_ids_since(session: Session, iso_timestamp: str) -> Sequence[str]
     stmt = select(Job.id).where(Job.collected_at > iso_timestamp)
     rows = session.execute(stmt).scalars().all()
     return rows
-
