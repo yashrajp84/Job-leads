@@ -1,0 +1,22 @@
+# Node / JS
+node_modules/
+dist/
+.next/
+.vercel/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# OS/Editor
+.DS_Store
+*.log
+
+# Project outputs
+job-leads/out/
+job-leads/data/
+job-leads/.env
+net-leads/apps/web/.env.local
+job-leads-web/.env.local
+
